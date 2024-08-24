@@ -16,7 +16,7 @@ use crate::{
             self, CommentSearch, GetLeadingTrivia, GetTrailingTrivia, HasInlineComments,
         },
     },
-    shape::Shape,
+    shape::{Shape, StrWidth},
 };
 use full_moon::ast::{
     punctuated::Punctuated, Block, Expression, LastStmt, Prefix, Return, Stmt, Var,
@@ -80,7 +80,7 @@ pub fn format_return(ctx: &Context, return_node: &Return, shape: Shape) -> Retur
 
                 // Test the return to see if its over width
                 let singleline_shape =
-                    shape + strip_trailing_trivia(&singleline_returns).to_string().len();
+                    shape + strip_trailing_trivia(&singleline_returns).to_string().width();
                 (singleline_shape.over_budget(), singleline_returns)
             }
         };

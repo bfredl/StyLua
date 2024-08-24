@@ -29,7 +29,7 @@ use crate::{
             self, CommentSearch, GetLeadingTrivia, GetTrailingTrivia, HasInlineComments,
         },
     },
-    shape::Shape,
+    shape::{Shape, StrWidth},
     CallParenType,
 };
 
@@ -243,7 +243,7 @@ fn function_args_multiline_heuristic(
                     singleline_shape = singleline_shape.reset() + END_LEN;
                 } else {
                     // Update the width with the collapsed function (normally indicative of a noop function)
-                    singleline_shape = singleline_shape + argument.to_string().len();
+                    singleline_shape = singleline_shape + argument.to_string().width();
                 }
             }
             Expression::TableConstructor(table) => {
@@ -271,7 +271,7 @@ fn function_args_multiline_heuristic(
                     singleline_shape = singleline_shape.reset() + BRACKET_LEN;
                 } else {
                     // Update the shape with the size of the collapsed table constructor
-                    singleline_shape = singleline_shape + argument.to_string().len();
+                    singleline_shape = singleline_shape + argument.to_string().width();
                 }
             }
             // TODO: Parentheses/UnOp, do we need to do more checking?
@@ -319,7 +319,7 @@ fn function_args_multiline_heuristic(
                 + punctuation
                     .trailing_trivia()
                     .filter(|x| trivia_util::trivia_is_comment(x))
-                    .fold(0, |acc, trivia| acc + trivia.to_string().len());
+                    .fold(0, |acc, trivia| acc + trivia.to_string().width());
         }
     }
 
@@ -338,7 +338,7 @@ fn format_argument_multiline(ctx: &Context, argument: &Expression, shape: Shape)
     // Also: if the argument contains comments, it should be multilined
     if argument.has_inline_comments()
         || shape
-            .add_width(strip_trivia(&infinite_width_argument).to_string().len())
+            .add_width(strip_trivia(&infinite_width_argument).to_string().width())
             .over_budget()
     {
         if trivia_util::can_hang_expression(argument) {
@@ -579,7 +579,7 @@ fn should_parameters_format_multiline(
     // Check the length of the parameters. We need to format them first onto a single line to check if required
     let mut line_length = format_singleline_parameters(ctx, function_body, shape)
         .to_string()
-        .len()
+        .width()
         + PARENS_LEN;
 
     // If we are in Luau mode, take into account the types
@@ -593,7 +593,7 @@ fn should_parameters_format_multiline(
             .map(|x| {
                 x.map_or((0, false), |specifier| {
                     let formatted = format_type_specifier(ctx, specifier, shape).to_string();
-                    let length = formatted.lines().next_back().unwrap_or("").len();
+                    let length = formatted.lines().next_back().unwrap_or("").width();
                     let contains_newline = formatted.lines().count() > 1;
 
                     (length, contains_newline)
@@ -782,7 +782,7 @@ pub fn format_function_body(
         .generics()
         .map(|generic_declaration| format_generic_declaration(ctx, generic_declaration, shape));
     #[cfg(feature = "luau")]
-    let shape = shape + generics.as_ref().map_or(0, |x| x.to_string().len());
+    let shape = shape + generics.as_ref().map_or(0, |x| x.to_string().width());
 
     let (parameters_parentheses, formatted_parameters) = match multiline_params {
         true => format_contained_punctuated_multiline(
@@ -832,9 +832,9 @@ pub fn format_function_body(
             #[cfg(feature = "luau")]
             let block_shape = block_shape
                 + type_specifiers.iter().fold(0, |acc, x| {
-                    acc + x.as_ref().map_or(0, |x| x.to_string().len())
+                    acc + x.as_ref().map_or(0, |x| x.to_string().width())
                 })
-                + return_type.as_ref().map_or(0, |x| x.to_string().len());
+                + return_type.as_ref().map_or(0, |x| x.to_string().width());
 
             let trailing_trivia = FormatTriviaType::Append(vec![Token::new(TokenType::spaces(1))]);
 
@@ -929,7 +929,7 @@ fn should_inline_prefix(ctx: &Context, prefix: &Prefix) -> bool {
     let prefix = strip_trivia(prefix).to_string();
 
     prefix.as_str().chars().next().unwrap().is_uppercase()
-        || prefix.len() <= ctx.config().indent_width
+        || prefix.width() <= ctx.config().indent_width
 }
 
 /// Formats a FunctionCall node
@@ -1160,7 +1160,7 @@ pub fn format_function_declaration(
     .update_leading_trivia(FormatTriviaType::Append(leading_trivia));
     let formatted_function_name = format_function_name(ctx, function_declaration.name(), shape);
 
-    let shape = shape + (9 + strip_trivia(&formatted_function_name).to_string().len()); // 9 = "function "
+    let shape = shape + (9 + strip_trivia(&formatted_function_name).to_string().width()); // 9 = "function "
     let function_body = format_function_body(ctx, function_declaration.body(), shape)
         .update_trailing_trivia(FormatTriviaType::Append(trailing_trivia));
 
@@ -1184,7 +1184,7 @@ pub fn format_local_function(
     let function_token = fmt_symbol!(ctx, local_function.function_token(), "function ", shape);
     let formatted_name = format_token_reference(ctx, local_function.name(), shape);
 
-    let shape = shape + (6 + 9 + strip_trivia(&formatted_name).to_string().len()); // 6 = "local ", 9 = "function "
+    let shape = shape + (6 + 9 + strip_trivia(&formatted_name).to_string().width()); // 6 = "local ", 9 = "function "
     let function_body = format_function_body(ctx, local_function.body(), shape)
         .update_trailing_trivia(FormatTriviaType::Append(trailing_trivia));
 
@@ -1204,7 +1204,7 @@ pub fn format_method_call(
     let formatted_colon_token = format_token_reference(ctx, method_call.colon_token(), shape);
     let formatted_name = format_token_reference(ctx, method_call.name(), shape);
     let shape =
-        shape + (formatted_colon_token.to_string().len() + formatted_name.to_string().len());
+        shape + (formatted_colon_token.to_string().width() + formatted_name.to_string().width());
     let formatted_function_args =
         format_function_args(ctx, method_call.args(), shape, call_next_node);
 

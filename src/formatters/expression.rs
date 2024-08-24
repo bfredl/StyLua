@@ -36,7 +36,7 @@ use crate::{
             GetTrailingTrivia,
         },
     },
-    shape::Shape,
+    shape::{Shape, StrWidth},
 };
 
 #[macro_export]
@@ -289,7 +289,7 @@ fn format_expression_internal(
         }
         Expression::UnaryOperator { unop, expression } => {
             let unop = format_unop(ctx, unop, shape);
-            let shape = shape + strip_leading_trivia(&unop).to_string().len();
+            let shape = shape + strip_leading_trivia(&unop).to_string().width();
             let mut expression = format_expression_internal(
                 ctx,
                 expression,
@@ -342,7 +342,7 @@ fn format_expression_internal(
             };
             let lhs = format_expression_internal(ctx, lhs, context, shape);
             let binop = format_binop(ctx, binop, shape);
-            let shape = shape.take_last_line(&lhs) + binop.to_string().len();
+            let shape = shape.take_last_line(&lhs) + binop.to_string().width();
             Expression::BinaryOperator {
                 lhs: Box::new(lhs),
                 binop,
@@ -550,7 +550,7 @@ fn format_token_expression_sequence(
 ) -> (TokenReference, Expression) {
     const SPACE_LEN: usize = " ".len();
     let formatted_token = format_token_reference(ctx, token, shape);
-    let token_width = strip_trivia(&formatted_token).to_string().len();
+    let token_width = strip_trivia(&formatted_token).to_string().width();
 
     let formatted_expression =
         format_expression(ctx, expression, shape.add_width(token_width + SPACE_LEN));
@@ -821,7 +821,7 @@ fn format_interpolated_string(
     let mut segments = Vec::new();
     for segment in interpolated_string.segments() {
         let literal = format_token_reference(ctx, &segment.literal, shape);
-        shape = shape + literal.to_string().len();
+        shape = shape + literal.to_string().width();
 
         let mut expression = format_expression(ctx, &segment.expression, shape);
         shape = shape.take_last_line(&expression);
@@ -940,27 +940,27 @@ fn hang_binop(ctx: &Context, binop: BinOp, shape: Shape, rhs: &Expression) -> Bi
     )
 }
 
-/// Finds the length of the expression which matches the precedence level of the provided binop
-fn binop_expression_length(expression: &Expression, top_binop: &BinOp) -> usize {
+/// Finds the width of the expression which matches the precedence level of the provided binop
+fn binop_expression_width(expression: &Expression, top_binop: &BinOp) -> usize {
     match expression {
         Expression::BinaryOperator { lhs, binop, rhs } => {
             if binop.precedence() >= top_binop.precedence()
                 && binop.is_right_associative() == top_binop.is_right_associative()
             {
                 if binop.is_right_associative() {
-                    binop_expression_length(rhs, top_binop)
-                        + strip_trivia(binop).to_string().len() + 2 // 2 = space before and after binop
-                        + strip_trivia(&**lhs).to_string().len()
+                    binop_expression_width(rhs, top_binop)
+                        + strip_trivia(binop).to_string().width() + 2 // 2 = space before and after binop
+                        + strip_trivia(&**lhs).to_string().width()
                 } else {
-                    binop_expression_length(lhs, top_binop)
-                        + strip_trivia(binop).to_string().len() + 2 // 2 = space before and after binop
-                        + strip_trivia(&**rhs).to_string().len()
+                    binop_expression_width(lhs, top_binop)
+                        + strip_trivia(binop).to_string().width() + 2 // 2 = space before and after binop
+                        + strip_trivia(&**rhs).to_string().width()
                 }
             } else {
                 0
             }
         }
-        _ => strip_trivia(expression).to_string().len(),
+        _ => strip_trivia(expression).to_string().width(),
     }
 }
 
@@ -1077,7 +1077,7 @@ fn is_hang_binop_over_width(
     };
 
     shape
-        .add_width(binop_expression_length(expression, top_binop))
+        .add_width(binop_expression_width(expression, top_binop))
         .over_budget()
 }
 
@@ -1159,7 +1159,7 @@ fn hang_binop_expression(
                 true => {
                     let lhs_shape = shape;
                     let rhs_shape =
-                        shape.reset() + strip_trivia(&new_binop).to_string().len() + SPACE_LEN;
+                        shape.reset() + strip_trivia(&new_binop).to_string().width() + SPACE_LEN;
 
                     let (lhs, rhs) = match side_to_hang {
                         ExpressionSide::Left => (
@@ -1335,7 +1335,7 @@ fn format_hanging_expression_(
 
                 let expression_str = formatted_expression.to_string();
                 if !contains_comments(expression)
-                    && !lhs_shape.add_width(2 + expression_str.len()).over_budget()
+                    && !lhs_shape.add_width(2 + expression_str.width()).over_budget()
                 {
                     // The expression inside the parentheses is small, we do not need to break it down further
                     return Expression::Parentheses {
@@ -1377,7 +1377,7 @@ fn format_hanging_expression_(
         }
         Expression::UnaryOperator { unop, expression } => {
             let unop = format_unop(ctx, unop, shape);
-            let shape = shape + strip_leading_trivia(&unop).to_string().len();
+            let shape = shape + strip_leading_trivia(&unop).to_string().width();
             let expression = format_hanging_expression_(
                 ctx,
                 expression,
@@ -1399,7 +1399,7 @@ fn format_hanging_expression_(
             let current_shape = shape.take_last_line(&lhs) + 1; // 1 = space before binop
             let mut new_binop = format_binop(ctx, binop, current_shape);
 
-            let singleline_shape = current_shape + strip_trivia(binop).to_string().len() + 1; // 1 = space after binop
+            let singleline_shape = current_shape + strip_trivia(binop).to_string().width() + 1; // 1 = space after binop
 
             let mut new_rhs = hang_binop_expression(
                 ctx,
@@ -1415,9 +1415,9 @@ fn format_hanging_expression_(
                     && binop_precedence_level(&new_rhs) >= binop.precedence())
                 || contains_comments(binop)
                 || lhs.has_trailing_comments(CommentSearch::All)
-                || (shape.take_last_line(&lhs) + format!("{binop}{rhs}").len()).over_budget()
+                || (shape.take_last_line(&lhs) + format!("{binop}{rhs}").width()).over_budget()
             {
-                let hanging_shape = shape.reset() + strip_trivia(binop).to_string().len() + 1;
+                let hanging_shape = shape.reset() + strip_trivia(binop).to_string().width() + 1;
                 new_binop = hang_binop(ctx, binop.to_owned(), shape, rhs);
                 new_rhs = hang_binop_expression(
                     ctx,

@@ -55,7 +55,7 @@ pub fn format_compound_assignment(
         .update_leading_trivia(FormatTriviaType::Append(leading_trivia));
     let compound_operator = format_compound_op(ctx, compound_assignment.compound_operator(), shape);
     let shape = shape
-        + (strip_leading_trivia(&lhs).to_string().len() + compound_operator.to_string().len());
+        + (strip_leading_trivia(&lhs).to_string().width() + compound_operator.to_string().width());
 
     let rhs = format_expression(ctx, compound_assignment.rhs(), shape)
         .update_trailing_trivia(FormatTriviaType::Append(trailing_trivia));
@@ -388,8 +388,8 @@ fn format_type_info_internal(
                     .add_width(
                         PAREN_LEN * 2
                             + ARROW_LEN
-                            + arguments.to_string().len()
-                            + strip_trailing_trivia(&**return_type).to_string().len(),
+                            + arguments.to_string().width()
+                            + strip_trailing_trivia(&**return_type).to_string().width(),
                     )
                     .over_budget();
 
@@ -407,7 +407,7 @@ fn format_type_info_internal(
             } else {
                 let parentheses = format_contained_span(ctx, parentheses, shape);
                 let arguments = format_punctuated(ctx, arguments, shape + 1, format_type_argument);
-                let shape = shape + (PAREN_LEN * 2 + arguments.to_string().len());
+                let shape = shape + (PAREN_LEN * 2 + arguments.to_string().width());
 
                 (parentheses, arguments, shape)
             };
@@ -483,7 +483,7 @@ fn format_type_info_internal(
             let type_info = Box::new(format_indexed_type_info(
                 ctx,
                 type_info,
-                shape + (strip_trivia(&module).to_string().len() + 1), // 1 = "."
+                shape + (strip_trivia(&module).to_string().width() + 1), // 1 = "."
             ));
             TypeInfo::Module {
                 module,
@@ -826,7 +826,7 @@ fn format_type_argument(ctx: &Context, type_argument: &TypeArgument, shape: Shap
 
     let shape = shape
         + name.as_ref().map_or(0, |(name, _)| {
-            strip_trivia(name).to_string().len() + COLON_LEN
+            strip_trivia(name).to_string().width() + COLON_LEN
         });
 
     let type_info = format_hangable_type_info(ctx, type_argument.type_info(), shape, 1);
@@ -853,7 +853,7 @@ pub fn format_type_field(
 
     let key = format_type_field_key(ctx, type_field.key(), leading_trivia, shape);
     let colon_token = fmt_symbol!(ctx, type_field.colon_token(), ": ", shape);
-    let shape = shape + (strip_leading_trivia(&key).to_string().len() + 2);
+    let shape = shape + (strip_leading_trivia(&key).to_string().width() + 2);
     let mut value = format_type_info(ctx, type_field.value(), shape);
 
     // Trailing trivia consists only of single line comments - multiline comments are kept in place
@@ -1059,7 +1059,7 @@ fn format_type_declaration(
 
     let shape = shape + TYPE_TOKEN_LENGTH;
     let type_name = format_token_reference(ctx, type_declaration.type_name(), shape);
-    let shape = shape + type_name.to_string().len();
+    let shape = shape + type_name.to_string().width();
 
     let generics = type_declaration
         .generics()

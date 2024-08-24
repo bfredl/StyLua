@@ -31,7 +31,7 @@ use crate::{
             HasInlineComments,
         },
     },
-    shape::Shape,
+    shape::{Shape, StrWidth},
 };
 
 /// Calculates the hanging level to use when hanging an expression.
@@ -359,13 +359,13 @@ pub fn format_assignment_no_trivia(
 
     // Test the assignment to see if its over width
     let singleline_shape = shape
-        + (strip_leading_trivia(&var_list).to_string().len()
+        + (strip_leading_trivia(&var_list).to_string().width()
             + 3
-            + strip_trailing_trivia(&expr_list).to_string().len());
+            + strip_trailing_trivia(&expr_list).to_string().width());
     if contains_comments || singleline_shape.over_budget() {
         // We won't attempt anything else with the var_list. Format it normally
         var_list = try_format_punctuated(ctx, assignment.variables(), shape, format_var, Some(1));
-        let shape = shape + (strip_leading_trivia(&var_list).to_string().len() + 3);
+        let shape = shape + (strip_leading_trivia(&var_list).to_string().width() + 3);
 
         let (new_expr_list, new_equal_token) =
             attempt_assignment_tactics(ctx, assignment.expressions(), shape, equal_token);
@@ -475,13 +475,13 @@ pub fn format_local_assignment_no_trivia(
         #[cfg(feature = "lua54")]
         {
             type_specifier_len += attributes.iter().fold(0, |acc, x| {
-                acc + x.as_ref().map_or(0, |y| y.to_string().len())
+                acc + x.as_ref().map_or(0, |y| y.to_string().width())
             });
         }
         #[cfg(feature = "luau")]
         {
             type_specifier_len += type_specifiers.iter().fold(0, |acc, x| {
-                acc + x.as_ref().map_or(0, |y| y.to_string().len())
+                acc + x.as_ref().map_or(0, |y| y.to_string().width())
             });
         }
 
@@ -497,11 +497,11 @@ pub fn format_local_assignment_no_trivia(
 
         // Test the assignment to see if its over width
         let singleline_shape = shape
-            + (strip_leading_trivia(&name_list).to_string().len()
+            + (strip_leading_trivia(&name_list).to_string().width()
                 + 6 // 6 = "local "
                 + 3 // 3 = " = "
                 + type_specifier_len
-                + strip_trailing_trivia(&expr_list).to_string().len());
+                + strip_trailing_trivia(&expr_list).to_string().width());
 
         if contains_comments || singleline_shape.over_budget() {
             // We won't attempt anything else with the name_list. Format it normally
@@ -513,7 +513,7 @@ pub fn format_local_assignment_no_trivia(
                 Some(1),
             );
             let shape = shape
-                + (strip_leading_trivia(&name_list).to_string().len() + 6 + 3 + type_specifier_len);
+                + (strip_leading_trivia(&name_list).to_string().width() + 6 + 3 + type_specifier_len);
 
             let (new_expr_list, new_equal_token) =
                 attempt_assignment_tactics(ctx, assignment.expressions(), shape, equal_token);

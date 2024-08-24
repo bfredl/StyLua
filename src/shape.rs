@@ -7,6 +7,18 @@ use full_moon::node::Node;
 use std::fmt::Display;
 use std::ops::Add;
 
+pub trait StrWidth {
+    /// Returns the string's displayed width in columns.
+    fn width(&self) -> usize;
+}
+
+impl StrWidth for str {
+    #[inline]
+    fn width(&self) -> usize {
+        unicode_display_width::width(self) as usize
+    }
+}
+
 /// A struct representing indentation level of the current code
 #[derive(Clone, Copy, Debug)]
 pub struct Indent {
@@ -214,7 +226,7 @@ impl Shape {
     pub fn take_first_line<T: Display>(&self, item: &T) -> Shape {
         let string = format!("{item}");
         let mut lines = string.lines();
-        let width = lines.next().unwrap_or("").len();
+        let width = lines.next().unwrap_or("").width();
         self.add_width(width)
     }
 
@@ -230,10 +242,10 @@ impl Shape {
         // Check if we have any more lines remaining
         if lines.count() > 0 {
             // Reset the shape and add the last line
-            self.reset().add_width(last_item.len())
+            self.reset().add_width(last_item.width())
         } else {
             // Continue adding to the current shape
-            self.add_width(last_item.len())
+            self.add_width(last_item.width())
         }
     }
 
@@ -272,7 +284,7 @@ impl Shape {
 
         lines.enumerate().any(|(idx, line)| {
             let shape = if idx == 0 { *self } else { self.reset() };
-            shape.add_width(line.len()).over_budget()
+            shape.add_width(line.width()).over_budget()
         })
     }
 }

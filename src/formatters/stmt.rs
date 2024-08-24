@@ -27,7 +27,7 @@ use crate::{
             self, CommentSearch, GetLeadingTrivia, GetTrailingTrivia, HasInlineComments,
         },
     },
-    shape::Shape,
+    shape::{Shape, StrWidth},
 };
 use full_moon::{
     ast::{
@@ -166,7 +166,7 @@ pub fn format_generic_for(ctx: &Context, generic_for: &GenericFor, shape: Shape)
         + type_specifiers.iter().fold(0, |acc, x| {
             acc + x
                 .as_ref()
-                .map_or(0, |type_specifier| type_specifier.to_string().len())
+                .map_or(0, |type_specifier| type_specifier.to_string().width())
         });
 
     let require_names_multiline = trivia_util::contains_comments(generic_for.names())
@@ -353,7 +353,7 @@ fn format_else_if(ctx: &Context, else_if_node: &ElseIf, shape: Shape) -> ElseIf 
     let singleline_then_token = fmt_symbol!(ctx, else_if_node.then_token(), " then", shape);
 
     // Determine if we need to hang the condition
-    let singleline_shape = shape + (7 + 5 + strip_trivia(&singleline_condition).to_string().len()); // 7 = "elseif ", 3 = " then"
+    let singleline_shape = shape + (7 + 5 + strip_trivia(&singleline_condition).to_string().width()); // 7 = "elseif ", 3 = " then"
     let require_multiline_expression = singleline_shape.over_budget()
         || else_if_node
             .else_if_token()
@@ -440,7 +440,7 @@ pub fn format_if(ctx: &Context, if_node: &If, shape: Shape) -> If {
 
     // Determine if we need to hang the condition
     let singleline_shape =
-        shape + (IF_LEN + THEN_LEN + strip_trivia(&singleline_condition).to_string().len());
+        shape + (IF_LEN + THEN_LEN + strip_trivia(&singleline_condition).to_string().width());
     let require_multiline_expression = singleline_shape.over_budget()
         || if_node.if_token().has_trailing_comments(CommentSearch::All)
         || if_node
@@ -497,7 +497,7 @@ pub fn format_if(ctx: &Context, if_node: &If, shape: Shape) -> If {
 
         // See if it fits under the column width. If it does, bail early and return this singleline if
         if !shape
-            .add_width(strip_trivia(&singleline_if).to_string().len())
+            .add_width(strip_trivia(&singleline_if).to_string().width())
             .over_budget()
         {
             return singleline_if;
@@ -672,7 +672,7 @@ pub fn format_repeat_block(ctx: &Context, repeat_block: &Repeat, shape: Shape) -
     let condition = remove_condition_parentheses(repeat_block.until().to_owned());
 
     // Determine if we need to hang the condition
-    let singleline_shape = shape + (6 + strip_trivia(&condition).to_string().len()); // 6 = "until "
+    let singleline_shape = shape + (6 + strip_trivia(&condition).to_string().width()); // 6 = "until "
     let require_multiline_expression =
         singleline_shape.over_budget() || condition.has_inline_comments();
 
@@ -708,7 +708,7 @@ pub fn format_while_block(ctx: &Context, while_block: &While, shape: Shape) -> W
     let singleline_do_token = fmt_symbol!(ctx, while_block.do_token(), " do", shape);
 
     // Determine if we need to hang the condition
-    let singleline_shape = shape + (6 + 3 + strip_trivia(&singleline_condition).to_string().len()); // 6 = "while ", 3 = " do"
+    let singleline_shape = shape + (6 + 3 + strip_trivia(&singleline_condition).to_string().width()); // 6 = "while ", 3 = " do"
     let require_multiline_expression = singleline_shape.over_budget()
         || while_block
             .while_token()

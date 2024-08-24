@@ -11,7 +11,7 @@ use crate::{
         trivia::{strip_trivia, FormatTriviaType, UpdateLeadingTrivia, UpdateTrailingTrivia},
         trivia_util::{self, CommentSearch, GetTrailingTrivia, HasInlineComments},
     },
-    shape::Shape,
+    shape::{Shape, StrWidth},
 };
 use full_moon::{
     ast::{
@@ -202,7 +202,7 @@ fn format_field(
                 .update_trailing_trivia(FormatTriviaType::Replace(vec![]))
                 .update_leading_trivia(leading_trivia);
 
-            let shape = shape + (strip_trivia(&key).to_string().len() + 3); // 3 = " = "
+            let shape = shape + (strip_trivia(&key).to_string().width() + 3); // 3 = " = "
             let value = format_field_expression_value(ctx, value, shape);
 
             Field::NameKey { key, equal, value }
@@ -314,7 +314,7 @@ where
         let formatted_punctuation = match current_fields.peek() {
             Some(_) => {
                 // Have more elements still to go
-                shape = shape + (formatted_field.to_string().len() + 2); // 2 = ", "
+                shape = shape + (formatted_field.to_string().width() + 2); // 2 = ", "
                 match punctuation {
                     Some(punctuation) => Some(fmt_symbol!(ctx, punctuation, ", ", shape)),
                     None => Some(TokenReference::symbol(", ").unwrap()),

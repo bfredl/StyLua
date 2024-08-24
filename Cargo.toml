@@ -54,6 +54,7 @@ strum = { version = "0.25.0", features = ["derive"], optional = true }
 thiserror = "1.0.49"
 threadpool = "1.8.1"
 toml = "0.8.1"
+unicode-display-width = "0.3.0"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = { version = "0.2.81", optional = true }
